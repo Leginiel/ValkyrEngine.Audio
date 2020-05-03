@@ -1,0 +1,10 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/.vs
+/ValkyrEngine.Audio/obj
+/ValkyrEngine.Audio.Tests/bin/Debug/netcoreapp3.1
+/ValkyrEngine.Audio.Tests/obj
+/ValkyrEngine.Audio/bin/Debug/netstandard2.0
+/ValkyrEngine.Audio/ValkyrEngine.Audio.xml
