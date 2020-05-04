@@ -1,0 +1,77 @@
+# ASP.NET Core
+# Build and test ASP.NET Core projects targeting .NET Core.
+# Add steps that run tests, create a NuGet package, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
+
+name: $(Rev:r)
+
+trigger:
+- develop
+pr:
+- develop
+
+pool:
+  vmImage: 'windows-latest'
+
+variables:
+  buildConfiguration: 'Release'
+
+steps:
+- task: NuGetCommand@2
+  inputs:
+    command: 'restore'
+    restoreSolution: '**/*.sln'
+    feedsToUse: 'select'
+    vstsFeed: '7d6ca53e-efbe-4997-824c-1ba1235a5b75/00c2c3a6-4465-4443-a765-a5aa67bfe68e'
+
+- task: SonarSource.sonarcloud.14d9cde6-c1da-4d55-aa01-2965cd301255.SonarCloudPrepare@1
+  displayName: 'Prepare analysis on SonarCloud'
+  inputs:
+    SonarCloud: SonarCloud
+    organization: 'leginiel-github'
+    projectKey: 'Leginiel_ValkyrEngine_Audio'
+    extraProperties: |
+      sonar.cs.opencover.reportsPaths=$(Build.SourcesDirectory)\ValkyrEngine.Audio.Tests\coverage.opencover.xml
+
+- task: DotNetCoreCLI@2
+  displayName: 'dotnet build'
+  env:
+    MSBUILDSINGLELOADCONTEXT: 1
+  inputs:
+    projects: ValkyrEngine.Audio.sln
+    arguments: '-c=$(buildConfiguration)'
+
+- task: DotNetCoreCLI@2
+  displayName: 'dotnet test'
+  env:
+    MSBUILDSINGLELOADCONTEXT: 1
+  inputs:
+    command: test
+    projects: '**/ValkyrEngine.Audio.Tests.csproj'
+    arguments: ' --logger trx /p:Include="[ValkyrEngine.Audio*]*" -v:n /p:CollectCoverage=true "/p:CoverletOutputFormat=\"opencover,cobertura\""'
+
+- task: Palmmedia.reportgenerator.reportgenerator-build-release-task.reportgenerator@1
+  displayName: ReportGenerator
+  inputs:
+    reports: '$(Build.SourcesDirectory)\ValkyrEngine.Audio.Tests\coverage.cobertura.xml'
+    targetdir: '$(Build.SourcesDirectory)\'
+    reporttypes: 'HtmlInline_AzurePipelines;HtmlChart'
+    
+- task: SonarSource.sonarcloud.ce096e50-6155-4de8-8800-4221aaeed4a1.SonarCloudAnalyze@1
+  displayName: 'Run Code Analysis'
+  inputs:
+    extraProperties: sonar.cs.opencover.reportsPaths=$(Build.SourcesDirectory)\ValkyrEngine.Audio.Tests\coverage.opencover.xml
+
+- task: SonarSource.sonarcloud.38b27399-a642-40af-bb7d-9971f69712e8.SonarCloudPublish@1
+  displayName: 'Publish Quality Gate Result'
+
+- task: PublishCodeCoverageResults@1
+  displayName: 'Publish code coverage from $(Build.SourcesDirectory)\ValkyrEngine.Audio.Tests\coverage.cobertura.xml'
+  inputs:
+    codeCoverageTool: Cobertura
+    summaryFileLocation: '$(Build.SourcesDirectory)\ValkyrEngine.Audio.Tests\coverage.cobertura.xml'
+
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish Artifact: ValkyrEngine.Audio'
+  inputs:
+    ArtifactName: ValkyrEngine.Audio
